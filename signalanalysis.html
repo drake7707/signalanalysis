@@ -42,7 +42,14 @@ fieldset {
     <fieldset>
         <span>Select a csv file:</span>
         <input type="file" id="file">
+        <br/>
+        or put values in this textbox:
+        <textarea id="txt"></textarea>
+        <br/>
+        <label><input id="filterOutliers" type="checkbox"></input>Filter out outliers (< q5, > q95)</label>
+        
         <button id="analyzeCSV">Analyze value columns</button>
+        
         <br/>
         <br/>
         <label>FFT window size
@@ -463,6 +470,10 @@ function main() {
             if (columnIdx === void 0) { columnIdx = 0; }
             var arr = text.split("\n").map(function (l) { return parseFloat(l.split(/[;,\t]/)[columnIdx].trim()); }).filter(function (val) { return !isNaN(val); });
             var data = new Float32Array(arr);
+            if (document.getElementById("filterOutliers").checked) {
+                var stats_1 = getStatistics(data);
+                data = data.filter(function (val) { return val >= stats_1.q5 && val <= stats_1.q95; });
+            }
             if (data.length <= 0) {
                 alert("No data points");
                 return;
@@ -703,19 +714,19 @@ function analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequency
         for (var i = 0; i < magnitude.length; i++)
             pi += magnitude[i] * magnitude[i];
         pi /= windowSize;
-        powerDensities.push(alphas.reduce(function (sum, val) { return sum + val; }) / windowSize);
+        powerDensities.push(alphas.reduce(function (sum, val) { return sum + val; }, 0) / windowSize);
         powerSpectralDensities.push(pi);
     }
     spectogram.draw(ctxSpectogram, palette);
     histogramOverTime.draw(ctxHistogram, palette);
     var totalPSD = powerSpectralDensities.reduce(function (sum, val) { return sum + val; }, 0);
     var probabilitySpectralDensities = powerSpectralDensities.map(function (psd) { return psd / totalPSD; });
-    var PSE = -probabilitySpectralDensities.filter(function (pi) { return pi > 0; }).map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; });
+    var PSE = -probabilitySpectralDensities.filter(function (pi) { return pi > 0; }).map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; }, 0);
     console.log("PSE: " + PSE);
     console.log(powerDensities);
     var totalPD = powerDensities.reduce(function (sum, val) { return sum + val; }, 0);
     var probabilityDensities = powerDensities.filter(function (pi) { return pi > 0; }).map(function (psd) { return psd / totalPD; });
-    var entropy = -probabilityDensities.map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; });
+    var entropy = -probabilityDensities.map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; }, 0);
     console.log("Entropy: " + entropy);
     var freqStep = 1 * nrSamplesPerSec / windowSize;
     var binLength = windowSize / frequencyBins;
@@ -747,15 +758,32 @@ function getStatistics(arr) {
     var kurtosis = fourthMoment / (stddev * stddev * stddev * stddev);
     var sortedValues = arr.slice(0).sort(function (a, b) { return a - b; });
     var midpointIdx = Math.floor(arr.length / 2);
-    var median = (arr.length % 2) > 0 ? sortedValues[midpointIdx] : ((sortedValues[midpointIdx - 1] + sortedValues[midpointIdx]) / 2.0);
+    var median = quartile(sortedValues, 0.5);
+    var q95 = quartile(sortedValues, 0.95);
+    var q75 = quartile(sortedValues, 0.75);
+    var q25 = quartile(sortedValues, 0.25);
+    var q5 = quartile(sortedValues, 0.05);
     return {
         mean: mean,
         variance: variance,
         stddev: stddev,
         median: median,
         skewness: skewness,
-        kurtosis: kurtosis
+        kurtosis: kurtosis,
+        q95: q95,
+        q5: q5,
+        q25: q25,
+        q75: q75
     };
+}
+function quartile(sortedData, q) {
+    var pos = ((sortedData.length) - 1) * q;
+    var base = Math.floor(pos);
+    var rest = pos - base;
+    if ((sortedData[base + 1] !== undefined))
+        return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
+    else
+        return sortedData[base];
 }
 var Palette = /** @class */ (function () {
     function Palette() {
@@ -1264,6 +1292,11 @@ async function main() {
         let arr = text.split("\n").map(l => parseFloat(l.split(/[;,\t]/)[columnIdx].trim())).filter(val => !isNaN(val));
         let data = new Float32Array(arr);
 
+        if ((<HTMLInputElement>document.getElementById("filterOutliers")).checked) {
+            const stats = getStatistics(data);
+            data = data.filter(val => val >= stats.q5 && val <= stats.q95);
+        }
+
         if (data.length <= 0) {
             alert("No data points");
             return;
@@ -1432,7 +1465,9 @@ function analyzeData(windowSize: number, windowOverlap: number, nrSamplesPerSec:
             pi += magnitude[i] * magnitude[i];
 
         pi /= windowSize;
-        powerDensities.push(alphas.reduce((sum, val) => sum + val) / windowSize);
+
+        powerDensities.push(alphas.reduce((sum, val) => sum + val, 0) / windowSize);
+
         powerSpectralDensities.push(pi);
 
     }
@@ -1443,13 +1478,13 @@ function analyzeData(windowSize: number, windowOverlap: number, nrSamplesPerSec:
     const totalPSD = powerSpectralDensities.reduce((sum, val) => sum + val, 0);
     const probabilitySpectralDensities = powerSpectralDensities.map(psd => psd / totalPSD);
 
-    const PSE = -probabilitySpectralDensities.filter(pi => pi > 0).map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val);
+    const PSE = -probabilitySpectralDensities.filter(pi => pi > 0).map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val,0);
     console.log("PSE: " + PSE);
 
     console.log(powerDensities);
     const totalPD = powerDensities.reduce((sum, val) => sum + val, 0);
     const probabilityDensities = powerDensities.filter(pi => pi > 0).map(psd => psd / totalPD);
-    const entropy = -probabilityDensities.map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val);
+    const entropy = -probabilityDensities.map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val,0);
 
     console.log("Entropy: " + entropy);
 
@@ -1487,6 +1522,10 @@ interface Stats {
     median: number;
     skewness: number;
     kurtosis: number;
+    q95: number;
+    q5: number;
+    q25: number;
+    q75: number;
 }
 
 
@@ -1506,8 +1545,11 @@ function getStatistics(arr: Float32Array): Stats {
 
     const sortedValues = arr.slice(0).sort((a, b) => a - b);
     const midpointIdx = Math.floor(arr.length / 2);
-    const median = (arr.length % 2) > 0 ? sortedValues[midpointIdx] : ((sortedValues[midpointIdx - 1] + sortedValues[midpointIdx]) / 2.0);
-
+    const median = quartile(sortedValues, 0.5);
+    const q95 = quartile(sortedValues, 0.95);
+    const q75 = quartile(sortedValues, 0.75);
+    const q25 = quartile(sortedValues, 0.25);
+    const q5 = quartile(sortedValues, 0.05);
 
     return {
         mean: mean,
@@ -1515,8 +1557,21 @@ function getStatistics(arr: Float32Array): Stats {
         stddev: stddev,
         median: median,
         skewness: skewness,
-        kurtosis: kurtosis
+        kurtosis: kurtosis,
+        q95: q95,
+        q5: q5,
+        q25: q25,
+        q75: q75
     };
+}
+function quartile(sortedData: Float32Array, q: number) {
+    var pos = ((sortedData.length) - 1) * q;
+    var base = Math.floor(pos);
+    var rest = pos - base;
+    if ((sortedData[base + 1] !== undefined))
+        return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
+    else
+        return sortedData[base];
 }
 
 
