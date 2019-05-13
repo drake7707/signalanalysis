@@ -1,0 +1,1609 @@
+﻿<html>
+
+<head>
+    <title>Untitled Typescript Snippet</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highcharts/7.1.1/css/highcharts.css" rel="stylesheet" />
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/boost.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+    <style>.spectogram-container {
+    position: relative;
+    padding:5px;
+    background-color:#CCC;
+}
+
+.frequency.label {
+    position: absolute;
+}
+
+.frequency.label.lower {
+    top: 0%;
+}
+
+.frequency.label.mid {
+    top:50%;
+}
+.frequency.label.upper {
+    bottom:0%;
+}
+
+fieldset {
+    width:calc(50% - 32px);
+    float:left;
+    height:450px;
+}</style>
+
+</head>
+
+<body>
+
+
+    <fieldset>
+        <span>Select a csv file:</span>
+        <input type="file" id="file">
+        <button id="analyzeCSV">Analyze value columns</button>
+        <br/>
+        <br/>
+        <label>FFT window size
+            <input id="windowSize" type="number" value="512" />
+        </label>
+        <br/>
+        <label>FFT window overlap
+            <input id="windowOverlap" type="number" value="0.5" step="0.1" min="0" max="0.9" />
+        </label>
+        <br/>
+        <label>Spectogram frequency bins
+            <input id="frequencyBins" type="number" value="128" />
+        </label>
+        <br/>
+        <label>Number of samples/sec
+            <input id="nrSamplesPerSec" type="number" value="10" />
+        </label>
+        <br/>
+        <button style="display:none" id="testOverTime">Test over time</button>
+        <button style="display:none" id="testSpectogramMultiSample">Test spectogram multi window hann sampling</button>
+
+        Select a column:
+        <select id="columnSelect"></select>
+
+    </fieldset>
+    <fieldset>
+        Input
+        <br/>
+        <canvas id="input" width="500" height="200"></canvas>
+        <div id="container"></div>
+    </fieldset>
+
+    <fieldset id="fldOutput">
+        Output (magnitude)
+        <br/>
+        <canvas id="output" width="500" height="200"></canvas>
+    </fieldset>
+    <fieldset>
+        Spectogram
+        <br/>
+        <div class="spectogram-container">
+            <canvas id="spectogram" width="500" height="400"></canvas>
+            <span class="upper frequency label" id="upperFreq"></span>
+            <span class="mid frequency label" id="midFreq"></span>
+            <span class="lower frequency label" id="lowerFreq"></span>
+        </div>
+
+        <div>PSE: <span class="" id="pse">0</span></div>
+    </fieldset>
+    <fieldset>
+        Histogram over time
+        <br/>
+        <div class="spectogram-container">
+            <canvas id="histogram" width="500" height="400"></canvas>
+            <span class="upper frequency label" id="histogramMax"></span>
+            <span class="lower frequency label" id="histogramMin"></span>
+        </div>
+
+
+        <div>Entropy: <span class="" id="entropy"></span></div>
+    </fieldset>
+
+    <fieldset>
+        Mean
+        <br/>
+        <div id="mean"></div>
+    </fieldset>
+    <fieldset>
+        Median
+        <br/>
+        <div id="median"></div>
+    </fieldset>
+    <fieldset>
+        Variance
+        <br/>
+        <div id="variance"></div>
+    </fieldset>
+    <fieldset>
+        Skewness
+        <br/>
+        <div id="skewness"></div>
+    </fieldset>
+    <fieldset>
+        Kurtosis
+        <br/>
+        <div id="kurtosis"></div>
+    </fieldset>
+
+    <script>/// <reference path="https://cdn.jsdelivr.net/npm/@types/highcharts@5.0.39/index.d.ts" />
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [0, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+// from https://github.com/Microsoft/ELT/blob/master/app/ts/stores/dataStructures/fft.ts
+var FFT;
+(function (FFT) {
+    // FFT code adapted from github: https://github.com/dntj/jsfft/blob/master/lib/fft.js, MIT License
+    // Converted to TypeScript.
+    function fft(input, inverse) {
+        var n = input.re.length;
+        if (n & (n - 1)) {
+            throw new Error('Cannot handle size ' + n + ' currently');
+            // return FFT_Recursive(input, inverse)
+        }
+        else {
+            return fftPowerOf2(input, inverse);
+        }
+    }
+    FFT.fft = fft;
+    function fftPowerOf2(input, inverse) {
+        var n = input.re.length;
+        var output = bitReverseComplexArray(input);
+        var oRE = output.re;
+        var oIM = output.im;
+        // Loops go like O(n log n):
+        //   width ~ log n; i,j ~ n
+        // width of each sub-array for which we're iteratively calculating FFT.
+        var width = 1;
+        while (width < n) {
+            var delFRE = Math.cos(Math.PI / width);
+            var delFIM = (inverse ? -1 : 1) * Math.sin(Math.PI / width);
+            for (var i = 0; i < n / (2 * width); i++) {
+                var fRE = 1;
+                var fIM = 0;
+                for (var j = 0; j < width; j++) {
+                    var l_index = 2 * i * width + j;
+                    var r_index = l_index + width;
+                    var lRE = oRE[l_index];
+                    var lIM = oIM[l_index];
+                    var rRE = fRE * oRE[r_index] - fIM * oIM[r_index];
+                    var rIM = fIM * oRE[r_index] + fRE * oIM[r_index];
+                    oRE[l_index] = Math.SQRT1_2 * (lRE + rRE);
+                    oIM[l_index] = Math.SQRT1_2 * (lIM + rIM);
+                    oRE[r_index] = Math.SQRT1_2 * (lRE - rRE);
+                    oIM[r_index] = Math.SQRT1_2 * (lIM - rIM);
+                    var temp = fRE * delFRE - fIM * delFIM;
+                    fIM = fRE * delFIM + fIM * delFRE;
+                    fRE = temp;
+                }
+            }
+            width <<= 1;
+        }
+        return output;
+    }
+    function bitReverseIndex(index, n) {
+        var bitreversed_index = 0;
+        while (n > 1) {
+            bitreversed_index <<= 1;
+            bitreversed_index += index & 1;
+            index >>= 1;
+            n >>= 1;
+        }
+        return bitreversed_index;
+    }
+    function bitReverseComplexArray(array) {
+        var n = array.re.length;
+        var flips = new Uint8Array(n);
+        for (var i = 0; i < n; i++) {
+            flips[i] = 0;
+        }
+        for (var i = 0; i < n; i++) {
+            var r_i = bitReverseIndex(i, n);
+            if (flips[i] || flips[r_i]) {
+                continue;
+            }
+            var swap = array.re[r_i];
+            array.re[r_i] = array.re[i];
+            array.re[i] = swap;
+            swap = array.im[r_i];
+            array.im[r_i] = array.im[i];
+            array.im[i] = swap;
+            flips[i] = flips[r_i] = 1;
+        }
+        return array;
+    }
+})(FFT || (FFT = {}));
+function draw(ctx, values, offset, length) {
+    if (offset === void 0) { offset = 0; }
+    if (length === void 0) { length = -1; }
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    var maxVal = Number.MIN_VALUE;
+    var minVal = Number.MAX_VALUE;
+    var len = values.length;
+    if (length != -1)
+        len = length - offset;
+    for (var i = offset; i < len; i++) {
+        if (maxVal < values[i])
+            maxVal = values[i];
+        if (minVal > values[i])
+            minVal = values[i];
+    }
+    for (var i = offset; i < len; i++) {
+        var x = i / len * ctx.canvas.width;
+        var y = ctx.canvas.height - ((values[i] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+        ctx.fillStyle = "blue";
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2, false);
+        ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.strokeStyle = "blue";
+    var x0 = 0;
+    var y0 = ctx.canvas.height - ((values[0] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+    ctx.moveTo(x0, y0);
+    for (var i = 1; i < len; i++) {
+        var x = i / len * ctx.canvas.width;
+        var y = ctx.canvas.height - ((values[i] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+        ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+function delay(ms) {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            return [2 /*return*/, new Promise(function (then) { return window.setTimeout(then, ms); })];
+        });
+    });
+}
+function bucketize(values, nrBuckets) {
+    var cellSize = Math.floor(values.length / nrBuckets);
+    var hist = new Float32Array(nrBuckets);
+    for (var i = 0; i < values.length; i++) {
+        var bucket = Math.floor(i / cellSize);
+        hist[bucket] += values[i];
+    }
+    return hist;
+}
+var Spectogram = /** @class */ (function () {
+    function Spectogram(maxHistory, freqBins) {
+        this.maxHistory = maxHistory;
+        this.freqBins = freqBins;
+        this.allValues = [];
+        this.bufferCanvas = document.createElement("canvas");
+        this.bufferCanvas.width = maxHistory;
+        this.bufferCanvas.height = freqBins;
+    }
+    Spectogram.prototype.add = function (values) {
+        var hist = bucketize(values, this.freqBins);
+        for (var i = 0; i < hist.length; i++) {
+            hist[i] = this.transform(hist[i]);
+        }
+        this.allValues.push(hist);
+        if (this.allValues.length > this.maxHistory)
+            this.allValues.shift();
+    };
+    Spectogram.prototype.transform = function (val) {
+        return Math.log(1 + val);
+    };
+    Spectogram.prototype.draw = function (ctx, palette) {
+        var max = Number.MIN_VALUE;
+        for (var _i = 0, _a = this.allValues; _i < _a.length; _i++) {
+            var values = _a[_i];
+            for (var i = 0; i < values.length; i++)
+                if (max < values[i])
+                    max = values[i];
+        }
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        var bufferCtx = this.bufferCanvas.getContext("2d");
+        var imgData = bufferCtx.getImageData(0, 0, this.bufferCanvas.width, this.bufferCanvas.height);
+        var idx = 0;
+        for (var x = 0; x < this.allValues.length; x++) {
+            var values = this.allValues[x];
+            // local max
+            var max_1 = Number.MIN_VALUE;
+            for (var i = 0; i < values.length; i++) {
+                if (max_1 < values[i])
+                    max_1 = values[i];
+            }
+            idx = x * 4;
+            for (var y = 0; y < values.length; y++) {
+                if (typeof palette == "undefined") {
+                    var val = Math.floor(values[y] / max_1 * 255);
+                    imgData.data[idx] = val;
+                    imgData.data[idx + 1] = val;
+                    imgData.data[idx + 2] = val;
+                    imgData.data[idx + 3] = 255; //Math.floor(values[y]/max * 255);
+                }
+                else {
+                    var color = palette.getColorFromLookupAt(values[y] / max_1);
+                    imgData.data[idx] = color.red;
+                    imgData.data[idx + 1] = color.green;
+                    imgData.data[idx + 2] = color.blue;
+                    imgData.data[idx + 3] = 255;
+                }
+                idx += this.bufferCanvas.width * 4;
+            }
+        }
+        bufferCtx.putImageData(imgData, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.bufferCanvas, 0, 0, this.bufferCanvas.width, this.bufferCanvas.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    };
+    return Spectogram;
+}());
+var HistogramOverTime = /** @class */ (function (_super) {
+    __extends(HistogramOverTime, _super);
+    function HistogramOverTime(maxHistory, bins) {
+        return _super.call(this, maxHistory, bins) || this;
+    }
+    HistogramOverTime.prototype.transform = function (val) {
+        return val;
+    };
+    return HistogramOverTime;
+}(Spectogram));
+function runOverTime(WINDOW_SIZE, ctxInput, ctxOutput, ctxSpectogram, ctxHistogram, palette) {
+    return __awaiter(this, void 0, void 0, function () {
+        var t, spectogram, bins, histogramOverTime, complex, baseFrequency, i, val, max, min, i, histogram, i, val, alpha, idx, magnitude, i, mag;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    t = 0;
+                    spectogram = new Spectogram(200, WINDOW_SIZE / 8);
+                    bins = WINDOW_SIZE / 8;
+                    histogramOverTime = new HistogramOverTime(200, bins);
+                    _a.label = 1;
+                case 1:
+                    if (!true) return [3 /*break*/, 3];
+                    complex = { im: new Float32Array(WINDOW_SIZE), re: new Float32Array(WINDOW_SIZE) };
+                    baseFrequency = t / 100;
+                    for (i = 0; i < WINDOW_SIZE; i++) {
+                        val = 2.0 * Math.sin((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 40))
+                            + 1 * Math.cos((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 20))
+                            + 0.5 * Math.sin((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 10))
+                            + Math.random() * 0.25 * Math.sin((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 5));
+                        complex.re[i] = val;
+                    }
+                    draw(ctxInput, complex.re);
+                    max = Number.MIN_VALUE;
+                    min = Number.MAX_VALUE;
+                    for (i = 0; i < WINDOW_SIZE; i++) {
+                        if (max < complex.re[i])
+                            max = complex.re[i];
+                        if (min > complex.re[i])
+                            min = complex.re[i];
+                    }
+                    histogram = new Float32Array(bins);
+                    for (i = 0; i < WINDOW_SIZE; i++) {
+                        val = complex.re[i];
+                        alpha = (min == max) ? 0 : (val - min) / (max - min);
+                        idx = Math.floor(alpha * (bins - 1));
+                        histogram[idx]++;
+                    }
+                    histogramOverTime.add(histogram);
+                    // changes complex
+                    FFT.fft(complex, false);
+                    magnitude = new Float32Array(complex.re.length / 2);
+                    for (i = 0; i < complex.re.length / 2; i++) {
+                        mag = Math.sqrt(complex.re[i] * complex.re[i] + complex.im[i] * complex.im[i]);
+                        magnitude[i] = mag;
+                    }
+                    spectogram.add(magnitude);
+                    draw(ctxOutput, magnitude);
+                    spectogram.draw(ctxSpectogram, palette);
+                    histogramOverTime.draw(ctxHistogram, palette);
+                    return [4 /*yield*/, delay(25)];
+                case 2:
+                    _a.sent();
+                    t++;
+                    return [3 /*break*/, 1];
+                case 3: return [2 /*return*/];
+            }
+        });
+    });
+}
+function getHannValues(size) {
+    var values = new Float32Array(size);
+    for (var i = 0; i < size; i++) {
+        var sin = Math.sin(Math.PI * i / size);
+        values[i] = sin * sin;
+    }
+    return values;
+}
+function main() {
+    return __awaiter(this, void 0, void 0, function () {
+        function analyze(text, columnIdx) {
+            if (columnIdx === void 0) { columnIdx = 0; }
+            var arr = text.split("\n").map(function (l) { return parseFloat(l.split(/[;,\t]/)[columnIdx].trim()); }).filter(function (val) { return !isNaN(val); });
+            var data = new Float32Array(arr);
+            if (data.length <= 0) {
+                alert("No data points");
+                return;
+            }
+            if (data.length < WINDOW_SIZE) {
+                alert("Window size can't be larger than the amount of data points");
+                return;
+            }
+            if (FREQUENCY_BINS > WINDOW_SIZE) {
+                alert("Frequency bins can't be larger than the window size");
+                return;
+            }
+            //draw(ctxInput, data, 0, 1024);
+            generateChart("container", "Input data", data, function () {
+                return this.value + " (" + (this.value / NR_SAMPLES_PER_SEC).toFixed(2) + "s)";
+            });
+            cInput.setAttribute("style", "display:none");
+            document.getElementById("fldOutput").setAttribute("style", "display:none");
+            analyzeData(WINDOW_SIZE, WINDOW_OVERLAP, NR_SAMPLES_PER_SEC, data, FREQUENCY_BINS, ctxSpectogram, ctxHistogram, palette);
+        }
+        var cInput, ctxInput, cOutput, ctxOutput, cSpectogram, ctxSpectogram, cHistogram, ctxHistogram, palette, WINDOW_SIZE, WINDOW_OVERLAP, FREQUENCY_BINS, NR_SAMPLES_PER_SEC, textToAnalyze;
+        return __generator(this, function (_a) {
+            cInput = document.getElementById("input");
+            ctxInput = cInput.getContext("2d");
+            cOutput = document.getElementById("output");
+            ctxOutput = cOutput.getContext("2d");
+            cSpectogram = document.getElementById("spectogram");
+            ctxSpectogram = cSpectogram.getContext("2d");
+            cHistogram = document.getElementById("histogram");
+            ctxHistogram = cHistogram.getContext("2d");
+            palette = new Palette();
+            palette.addColor(new Color(50, 55, 100, 0));
+            palette.addColor(new Color(67, 113, 179, 0.1));
+            palette.addColor(new Color(108, 163, 204, 0.2));
+            palette.addColor(new Color(155, 204, 225, 0.3));
+            palette.addColor(new Color(204, 234, 243, 0.4));
+            palette.addColor(new Color(239, 233, 193, 0.5));
+            palette.addColor(new Color(254, 202, 123, 0.6));
+            palette.addColor(new Color(250, 153, 87, 0.7));
+            palette.addColor(new Color(237, 95, 61, 0.8));
+            palette.addColor(new Color(208, 42, 39, 0.9));
+            palette.addColor(new Color(208, 42, 39, 0.9));
+            palette.addColor(new Color(146, 11, 39, 1));
+            palette.buildLookup();
+            WINDOW_SIZE = 256;
+            WINDOW_OVERLAP = 0.5;
+            FREQUENCY_BINS = 128;
+            NR_SAMPLES_PER_SEC = 10;
+            document.getElementById("testOverTime").onclick = function () {
+                runOverTime(WINDOW_SIZE, ctxInput, ctxOutput, ctxSpectogram, ctxHistogram, palette);
+            };
+            document.getElementById("testSpectogramMultiSample").onclick = function () {
+                var NR_SAMPLES = WINDOW_SIZE * 5;
+                testGenerateSpectogram(NR_SAMPLES, WINDOW_SIZE, NR_SAMPLES_PER_SEC, ctxInput, WINDOW_OVERLAP, FREQUENCY_BINS, ctxSpectogram, ctxHistogram, palette);
+            };
+            document.getElementById("windowSize").onchange = function () {
+                WINDOW_SIZE = this.valueAsNumber;
+            };
+            document.getElementById("windowOverlap").onchange = function () {
+                WINDOW_OVERLAP = this.valueAsNumber;
+                console.log("Window overlap: " + WINDOW_OVERLAP);
+            };
+            document.getElementById("frequencyBins").onchange = function () {
+                FREQUENCY_BINS = this.valueAsNumber;
+            };
+            document.getElementById("nrSamplesPerSec").onchange = function () {
+                NR_SAMPLES_PER_SEC = this.valueAsNumber;
+            };
+            textToAnalyze = "";
+            document.getElementById("analyzeCSV").onclick = function () {
+                var loadText = new Promise(function (then, reject) {
+                    var fileToLoad = document.getElementById("file").files[0];
+                    if (typeof fileToLoad === "undefined") {
+                        var text = document.getElementById("txt").value;
+                        then(text);
+                    }
+                    else {
+                        var fileReader = new FileReader();
+                        fileReader.onload = function (fileLoadedEvent) {
+                            var text = fileLoadedEvent.target.result;
+                            then(text);
+                        };
+                        fileReader.readAsText(fileToLoad, "UTF-8");
+                    }
+                });
+                loadText.then(function (text) {
+                    textToAnalyze = text;
+                    var lines = textToAnalyze.split("\n");
+                    if (lines.length > 0) {
+                        var parts = lines[0].split(/[;,\t]/);
+                        var el = document.getElementById("columnSelect");
+                        for (var i = el.childNodes.length - 1; i >= 0; i--) {
+                            el.removeChild(el.childNodes[i]);
+                        }
+                        for (var i = 0; i < parts.length; i++) {
+                            var opt = document.createElement("option");
+                            opt.value = i.toString();
+                            opt.textContent = "Column " + i;
+                            el.appendChild(opt);
+                        }
+                    }
+                    try {
+                        analyze(textToAnalyze);
+                    }
+                    catch (err) {
+                        alert("Error: " + err.name + " - " + err.message);
+                    }
+                }).catch(function (err) {
+                    alert("Error loading text");
+                });
+            };
+            document.getElementById("columnSelect").onchange = function () {
+                var el = document.getElementById("columnSelect");
+                try {
+                    analyze(textToAnalyze, el.selectedIndex);
+                }
+                catch (err) {
+                    alert("Error: " + err.name + " - " + err.message + " " + err.stack);
+                }
+            };
+            return [2 /*return*/];
+        });
+    });
+}
+function generateChart(containerId, title, data, formatter) {
+    Highcharts.chart(containerId, {
+        chart: {
+            zoomType: 'x'
+        },
+        title: {
+            text: title
+        },
+        tooltip: {
+            valueDecimals: 2
+        },
+        credits: {
+            enabled: false
+        },
+        xAxis: {
+            labels: {
+                formatter: typeof formatter !== "undefined" ? formatter : function () {
+                    return "" + this.value;
+                }
+            }
+        },
+        series: [{
+                data: data,
+                lineWidth: 0.5,
+                name: 'Data points',
+                showInLegend: false
+            }]
+    });
+}
+function testGenerateSpectogram(nrSamples, windowSize, nrSamplesPerSec, ctxInput, windowOverlap, frequencyBins, ctxSpectogram, ctxHistogram, palette) {
+    var nrFullWindows = nrSamples / windowSize;
+    var data = new Float32Array(nrSamples);
+    var dataIdx = 0;
+    for (var t = 0; t < nrFullWindows; t++) {
+        for (var i = 0; i < windowSize; i++) {
+            if (i % 10 < 4) {
+                data[dataIdx++] = 10;
+            }
+            else if (i % 10 < 8) {
+                data[dataIdx++] = 5;
+            }
+            else
+                data[dataIdx++] = 0;
+        }
+        /*   let baseFrequency = t;
+           for (let i: number = 0; i < windowSize; i++) {
+               const val = 2.0 * Math.sin((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 40))
+                   + 1 * Math.cos((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 20))
+                   + 0.5 * Math.sin((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 10))
+                   + Math.random() * 0.25 * Math.sin((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 5));
+               data[dataIdx++] = val;
+           }*/
+    }
+    try {
+        generateChart("container", "Input data", data, function () {
+            return this.value + " (" + (this.value / nrSamplesPerSec).toFixed(2) + "s)";
+        });
+        analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequencyBins, ctxSpectogram, ctxHistogram, palette);
+    }
+    catch (err) {
+        alert("Error: " + err.name + " - " + err.message);
+    }
+}
+function analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequencyBins, ctxSpectogram, ctxHistogram, palette) {
+    var windowStep = windowSize * (1 - windowOverlap);
+    var hannValues = getHannValues(windowSize);
+    var windowFunction = function (i) { return hannValues[i]; };
+    var nrWindows = data.length / windowStep;
+    var powerSpectralDensities = [];
+    var spectogram = new Spectogram(nrWindows, frequencyBins);
+    var globalMax = Number.MIN_VALUE;
+    var globalMin = Number.MAX_VALUE;
+    for (var i = 0; i < data.length; i++) {
+        if (globalMax < data[i])
+            globalMax = data[i];
+        if (globalMin > data[i])
+            globalMin = data[i];
+    }
+    var histogramOverTime = new HistogramOverTime(nrWindows, frequencyBins);
+    var powerDensities = [];
+    var statsArray = [];
+    for (var offset = 0; offset < data.length - windowSize; offset += windowStep) {
+        var complex = { im: new Float32Array(windowSize), re: new Float32Array(windowSize) };
+        var max = Number.MIN_VALUE;
+        var min = Number.MAX_VALUE;
+        for (var i = 0; i < windowSize; i++) {
+            if (max < data[offset + i])
+                max = data[offset + i];
+            if (min > data[offset + i])
+                min = data[offset + i];
+        }
+        var alphas = [];
+        var histogram = new Float32Array(frequencyBins);
+        for (var i = 0; i < windowSize; i++) {
+            var val = data[offset + i];
+            var alpha = (globalMin == globalMax) ? 0 : (val - globalMin) / (globalMax - globalMin);
+            //alpha *= windowFunction(i);
+            alphas.push(alpha);
+            var idx = Math.floor(alpha * (frequencyBins - 1));
+            histogram[idx]++;
+        }
+        histogramOverTime.add(histogram);
+        for (var i = 0; i < windowSize; i++)
+            complex.re[i] = windowFunction(i) * data[offset + i];
+        var stats = getStatistics(complex.re);
+        statsArray.push(stats);
+        FFT.fft(complex, false);
+        var magnitude = new Float32Array(windowSize);
+        for (var i = 0; i < complex.re.length; i++) {
+            magnitude[i] = Math.sqrt(complex.re[i] * complex.re[i] + complex.im[i] * complex.im[i]);
+        }
+        spectogram.add(magnitude);
+        var pi = 0;
+        for (var i = 0; i < magnitude.length; i++)
+            pi += magnitude[i] * magnitude[i];
+        pi /= windowSize;
+        powerDensities.push(alphas.reduce(function (sum, val) { return sum + val; }) / windowSize);
+        powerSpectralDensities.push(pi);
+    }
+    spectogram.draw(ctxSpectogram, palette);
+    histogramOverTime.draw(ctxHistogram, palette);
+    var totalPSD = powerSpectralDensities.reduce(function (sum, val) { return sum + val; }, 0);
+    var probabilitySpectralDensities = powerSpectralDensities.map(function (psd) { return psd / totalPSD; });
+    var PSE = -probabilitySpectralDensities.filter(function (pi) { return pi > 0; }).map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; });
+    console.log("PSE: " + PSE);
+    console.log(powerDensities);
+    var totalPD = powerDensities.reduce(function (sum, val) { return sum + val; }, 0);
+    var probabilityDensities = powerDensities.filter(function (pi) { return pi > 0; }).map(function (psd) { return psd / totalPD; });
+    var entropy = -probabilityDensities.map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; });
+    console.log("Entropy: " + entropy);
+    var freqStep = 1 * nrSamplesPerSec / windowSize;
+    var binLength = windowSize / frequencyBins;
+    var lowerFreq = 0 * nrSamplesPerSec / windowSize;
+    var midFreq = (windowSize / 2) * nrSamplesPerSec / windowSize;
+    var upperFreq = (windowSize - 1) * nrSamplesPerSec / windowSize;
+    document.getElementById("lowerFreq").textContent = lowerFreq.toFixed(2) + " - " + (lowerFreq + freqStep * binLength).toFixed(2) + " Hz";
+    document.getElementById("midFreq").textContent = midFreq.toFixed(2) + " - " + (midFreq + freqStep * binLength).toFixed(2) + " Hz";
+    document.getElementById("upperFreq").textContent = upperFreq.toFixed(2) + " - " + (upperFreq + freqStep * binLength).toFixed(2) + " Hz";
+    document.getElementById("histogramMin").textContent = "" + globalMin.toFixed(2);
+    document.getElementById("histogramMax").textContent = "" + globalMax.toFixed(2);
+    document.getElementById("pse").textContent = PSE + "";
+    document.getElementById("entropy").textContent = entropy + "";
+    generateChart("mean", "Mean", statsArray.map(function (s) { return s.mean; }));
+    generateChart("median", "Median", statsArray.map(function (s) { return s.median; }));
+    generateChart("variance", "Variance", statsArray.map(function (s) { return s.variance; }));
+    generateChart("skewness", "Skewness", statsArray.map(function (s) { return s.skewness; }));
+    generateChart("kurtosis", "Kurtosis", statsArray.map(function (s) { return s.kurtosis; }));
+}
+function getStatistics(arr) {
+    var sum = arr.reduce(function (sum, val) { return sum + val; });
+    var mean = sum / arr.length;
+    var stddevsum = arr.reduce(function (sum, val) { return sum + (val - mean) * (val - mean); });
+    var variance = stddevsum / (arr.length - 1);
+    var stddev = Math.sqrt(variance);
+    var thirdMoment = arr.reduce(function (sum, val) { return sum + (val - mean) * (val - mean) * (val - mean); }) / arr.length;
+    var skewness = thirdMoment / (stddev * stddev * stddev);
+    var fourthMoment = arr.reduce(function (sum, val) { return sum + (val - mean) * (val - mean) * (val - mean) * (val - mean); }) / arr.length;
+    var kurtosis = fourthMoment / (stddev * stddev * stddev * stddev);
+    var sortedValues = arr.slice(0).sort(function (a, b) { return a - b; });
+    var midpointIdx = Math.floor(arr.length / 2);
+    var median = (arr.length % 2) > 0 ? sortedValues[midpointIdx] : ((sortedValues[midpointIdx - 1] + sortedValues[midpointIdx]) / 2.0);
+    return {
+        mean: mean,
+        variance: variance,
+        stddev: stddev,
+        median: median,
+        skewness: skewness,
+        kurtosis: kurtosis
+    };
+}
+var Palette = /** @class */ (function () {
+    function Palette() {
+        this.colors = [];
+        this.lookup = [];
+    }
+    Palette.prototype.buildLookup = function () {
+        this.lookup = [];
+        for (var i = 0; i < 1000; i++)
+            this.lookup.push(this.getColorAt(i / 1000));
+    };
+    ;
+    Palette.prototype.getColorFromLookupAt = function (position) {
+        var idx;
+        if (isNaN(position))
+            idx = 0;
+        else
+            idx = Math.floor(position * this.lookup.length);
+        if (idx < 0)
+            idx = 0;
+        if (idx >= this.lookup.length)
+            idx = this.lookup.length - 1;
+        return this.lookup[idx];
+    };
+    ;
+    Palette.prototype.getColorAt = function (position) {
+        if (position < this.colors[0].position)
+            return this.colors[0];
+        if (position >= this.colors[this.colors.length - 1].position)
+            return this.colors[this.colors.length - 1];
+        for (var i = 0; i < this.colors.length; i++) {
+            if (position >= this.colors[i].position && position < this.colors[i + 1].position) {
+                var relColorAlpha = (position - this.colors[i].position) / (this.colors[i + 1].position - this.colors[i].position);
+                var red = this.colors[i].red * (1 - relColorAlpha) + this.colors[i + 1].red * (relColorAlpha);
+                var green = this.colors[i].green * (1 - relColorAlpha) + this.colors[i + 1].green * (relColorAlpha);
+                var blue = this.colors[i].blue * (1 - relColorAlpha) + this.colors[i + 1].blue * (relColorAlpha);
+                return new Color(red, green, blue, position);
+            }
+        }
+        return this.colors[0];
+    };
+    Palette.prototype.addColor = function (c) {
+        this.colors.push(c);
+    };
+    Palette.prototype.drawTo = function (ctx) {
+        for (var i = 0; i < ctx.canvas.width; i++) {
+            var pos = i / ctx.canvas.width;
+            var c = this.getColorFromLookupAt(pos);
+            ctx.fillStyle = "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
+            ctx.fillRect(i, 0, 1, ctx.canvas.height);
+        }
+    };
+    return Palette;
+}());
+var Color = /** @class */ (function () {
+    function Color(red, green, blue, position) {
+        this.red = Math.floor(red);
+        this.green = Math.floor(green);
+        this.blue = Math.floor(blue);
+        this.position = Math.round(position * 100) / 100;
+    }
+    return Color;
+}());
+main().then(function () {
+}).catch(function (err) {
+    console.error(err.name + " " + err.message);
+});
+//# sourceMappingURL=temp.js.map</script>
+<script id='_typescriptCode' type='text/typescript'> 
+/// <reference path="https://cdn.jsdelivr.net/npm/@types/highcharts@5.0.39/index.d.ts" />
+
+// from https://github.com/Microsoft/ELT/blob/master/app/ts/stores/dataStructures/fft.ts
+module FFT {
+    export type ComplexArray = { re: Float32Array, im: Float32Array };
+
+    // FFT code adapted from github: https://github.com/dntj/jsfft/blob/master/lib/fft.js, MIT License
+    // Converted to TypeScript.
+    export function fft(input: ComplexArray, inverse: boolean): ComplexArray {
+        const n = input.re.length;
+        if (n & (n - 1)) {
+            throw new Error('Cannot handle size ' + n + ' currently');
+            // return FFT_Recursive(input, inverse)
+        } else {
+            return fftPowerOf2(input, inverse);
+        }
+    }
+
+    function fftPowerOf2(input: ComplexArray, inverse: boolean): ComplexArray {
+        const n = input.re.length;
+
+        const output = bitReverseComplexArray(input);
+        const oRE = output.re;
+        const oIM = output.im;
+
+        // Loops go like O(n log n):
+        //   width ~ log n; i,j ~ n
+        // width of each sub-array for which we're iteratively calculating FFT.
+        let width = 1;
+        while (width < n) {
+            const delFRE = Math.cos(Math.PI / width);
+            const delFIM = (inverse ? -1 : 1) * Math.sin(Math.PI / width);
+            for (let i = 0; i < n / (2 * width); i++) {
+                let fRE = 1;
+                let fIM = 0;
+                for (let j = 0; j < width; j++) {
+                    const l_index = 2 * i * width + j;
+                    const r_index = l_index + width;
+
+                    const lRE = oRE[l_index];
+                    const lIM = oIM[l_index];
+
+                    const rRE = fRE * oRE[r_index] - fIM * oIM[r_index];
+                    const rIM = fIM * oRE[r_index] + fRE * oIM[r_index];
+
+                    oRE[l_index] = Math.SQRT1_2 * (lRE + rRE);
+                    oIM[l_index] = Math.SQRT1_2 * (lIM + rIM);
+                    oRE[r_index] = Math.SQRT1_2 * (lRE - rRE);
+                    oIM[r_index] = Math.SQRT1_2 * (lIM - rIM);
+
+                    const temp = fRE * delFRE - fIM * delFIM;
+                    fIM = fRE * delFIM + fIM * delFRE;
+                    fRE = temp;
+                }
+            }
+            width <<= 1;
+        }
+        return output;
+    }
+
+    function bitReverseIndex(index: number, n: number): number {
+        let bitreversed_index: number = 0;
+        while (n > 1) {
+            bitreversed_index <<= 1;
+            bitreversed_index += index & 1;
+            index >>= 1;
+            n >>= 1;
+        }
+        return bitreversed_index;
+    }
+
+    function bitReverseComplexArray(array: ComplexArray): ComplexArray {
+        const n = array.re.length;
+        const flips = new Uint8Array(n);
+        for (let i = 0; i < n; i++) {
+            flips[i] = 0;
+        }
+        for (let i = 0; i < n; i++) {
+            const r_i = bitReverseIndex(i, n);
+            if (flips[i] || flips[r_i]) { continue; }
+
+            let swap = array.re[r_i];
+            array.re[r_i] = array.re[i];
+            array.re[i] = swap;
+
+            swap = array.im[r_i];
+            array.im[r_i] = array.im[i];
+            array.im[i] = swap;
+
+            flips[i] = flips[r_i] = 1;
+        }
+        return array;
+    }
+}
+
+
+function draw(ctx: CanvasRenderingContext2D, values: Float32Array, offset: number = 0, length: number = -1) {
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    let maxVal = Number.MIN_VALUE;
+    let minVal = Number.MAX_VALUE;
+
+    let len = values.length;
+    if (length != -1)
+        len = length - offset;
+
+
+
+    for (let i: number = offset; i < len; i++) {
+        if (maxVal < values[i]) maxVal = values[i];
+        if (minVal > values[i]) minVal = values[i];
+    }
+
+    for (let i: number = offset; i < len; i++) {
+        const x = i / len * ctx.canvas.width;
+        const y = ctx.canvas.height - ((values[i] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+
+        ctx.fillStyle = "blue";
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2, false);
+        ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = "blue";
+
+    const x0 = 0;
+    const y0 = ctx.canvas.height - ((values[0] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+    ctx.moveTo(x0, y0);
+    for (let i: number = 1; i < len; i++) {
+        const x = i / len * ctx.canvas.width;
+        const y = ctx.canvas.height - ((values[i] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+        ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+}
+
+async function delay(ms: number) {
+    return new Promise(then => window.setTimeout(then, ms));
+}
+
+
+function bucketize(values: Float32Array, nrBuckets: number): Float32Array {
+    let cellSize = Math.floor(values.length / nrBuckets);
+
+    let hist = new Float32Array(nrBuckets);
+    for (let i: number = 0; i < values.length; i++) {
+        let bucket = Math.floor(i / cellSize);
+        hist[bucket] += values[i];
+    }
+    return hist;
+}
+
+class Spectogram {
+
+    private allValues: Float32Array[] = [];
+
+    private bufferCanvas: HTMLCanvasElement;
+
+    constructor(private maxHistory: number, private freqBins: number) {
+        this.bufferCanvas = document.createElement("canvas");
+        this.bufferCanvas.width = maxHistory;
+        this.bufferCanvas.height = freqBins;
+    }
+
+    add(values: Float32Array) {
+        const hist = bucketize(values, this.freqBins);
+        for (let i: number = 0; i < hist.length; i++) {
+            hist[i] = this.transform(hist[i]);
+        }
+        this.allValues.push(hist);
+        if (this.allValues.length > this.maxHistory)
+            this.allValues.shift();
+    }
+
+    transform(val: number): number {
+        return Math.log(1 + val);
+    }
+
+    draw(ctx: CanvasRenderingContext2D, palette?: Palette) {
+        let max = Number.MIN_VALUE;
+        for (let values of this.allValues) {
+            for (let i: number = 0; i < values.length; i++)
+                if (max < values[i]) max = values[i];
+        }
+
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+        const bufferCtx = this.bufferCanvas.getContext("2d")!;
+        const imgData = bufferCtx.getImageData(0, 0, this.bufferCanvas.width, this.bufferCanvas.height);
+        let idx = 0;
+        for (let x: number = 0; x < this.allValues.length; x++) {
+            const values = this.allValues[x];
+
+            // local max
+            let max = Number.MIN_VALUE;
+            for (let i: number = 0; i < values.length; i++) {
+                if (max < values[i]) max = values[i];
+            }
+
+            idx = x * 4;
+            for (let y: number = 0; y < values.length; y++) {
+
+                if (typeof palette == "undefined") {
+                    const val = Math.floor(values[y] / max * 255);
+
+                    imgData.data[idx] = val;
+                    imgData.data[idx + 1] = val;
+                    imgData.data[idx + 2] = val;
+                    imgData.data[idx + 3] = 255;//Math.floor(values[y]/max * 255);
+                } else {
+                    const color = palette.getColorFromLookupAt(values[y] / max);
+                    imgData.data[idx] = color.red;
+                    imgData.data[idx + 1] = color.green;
+                    imgData.data[idx + 2] = color.blue;
+                    imgData.data[idx + 3] = 255;
+                }
+                idx += this.bufferCanvas.width * 4;
+
+            }
+
+        }
+        bufferCtx.putImageData(imgData, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.bufferCanvas, 0, 0, this.bufferCanvas.width, this.bufferCanvas.height, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
+}
+
+
+class HistogramOverTime extends Spectogram {
+    constructor(maxHistory: number, bins: number) {
+        super(maxHistory, bins);
+    }
+
+    transform(val: number): number {
+        return val;
+    }
+
+}
+
+async function runOverTime(WINDOW_SIZE: number, ctxInput: CanvasRenderingContext2D, ctxOutput: CanvasRenderingContext2D, ctxSpectogram: CanvasRenderingContext2D, ctxHistogram: CanvasRenderingContext2D, palette: Palette) {
+    let t = 0;
+    let spectogram: Spectogram = new Spectogram(200, WINDOW_SIZE / 8);
+
+    const bins = WINDOW_SIZE / 8;
+    let histogramOverTime = new HistogramOverTime(200, bins);
+
+    while (true) {
+        let complex: FFT.ComplexArray = { im: new Float32Array(WINDOW_SIZE), re: new Float32Array(WINDOW_SIZE) };
+        let baseFrequency = t / 100;
+        for (let i: number = 0; i < WINDOW_SIZE; i++) {
+            const val = 2.0 * Math.sin((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 40))
+                + 1 * Math.cos((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 20))
+                + 0.5 * Math.sin((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 10))
+                + Math.random() * 0.25 * Math.sin((i + t) / WINDOW_SIZE * (Math.PI * 2 * baseFrequency * 5));
+            complex.re[i] = val;
+        }
+        draw(ctxInput, complex.re);
+
+        let max: number = Number.MIN_VALUE;
+        let min: number = Number.MAX_VALUE;
+
+        for (let i: number = 0; i < WINDOW_SIZE; i++) {
+            if (max < complex.re[i]) max = complex.re[i];
+            if (min > complex.re[i]) min = complex.re[i];
+        }
+
+        const histogram = new Float32Array(bins);
+        for (let i: number = 0; i < WINDOW_SIZE; i++) {
+            let val = complex.re[i];
+            let alpha = (min == max) ? 0 : (val - min) / (max - min);
+            //alpha *= windowFunction(i);
+
+            let idx = Math.floor(alpha * (bins - 1));
+            histogram[idx]++;
+        }
+        histogramOverTime.add(histogram);
+
+        // changes complex
+        FFT.fft(complex, false);
+        const magnitude = new Float32Array(complex.re.length / 2);
+        for (let i: number = 0; i < complex.re.length / 2; i++) {
+            const mag = Math.sqrt(complex.re[i] * complex.re[i] + complex.im[i] * complex.im[i]);
+            magnitude[i] = mag;
+        }
+        spectogram.add(magnitude);
+        draw(ctxOutput, magnitude);
+        spectogram.draw(ctxSpectogram, palette);
+        histogramOverTime.draw(ctxHistogram, palette);
+        await delay(25);
+        t++;
+    }
+}
+
+function getHannValues(size: number) {
+    const values = new Float32Array(size);
+    for (let i: number = 0; i < size; i++) {
+        const sin = Math.sin(Math.PI * i / size)
+        values[i] = sin * sin;
+    }
+    return values;
+}
+
+async function main() {
+
+
+    const cInput = <HTMLCanvasElement>document.getElementById("input");
+    const ctxInput = cInput.getContext("2d")!;
+    const cOutput = <HTMLCanvasElement>document.getElementById("output");
+    const ctxOutput = cOutput.getContext("2d");
+
+    const cSpectogram = <HTMLCanvasElement>document.getElementById("spectogram");
+    const ctxSpectogram = cSpectogram.getContext("2d");
+
+    const cHistogram = <HTMLCanvasElement>document.getElementById("histogram");
+    const ctxHistogram = cHistogram.getContext("2d");
+
+    const palette = new Palette();
+    palette.addColor(new Color(50, 55, 100, 0));
+    palette.addColor(new Color(67, 113, 179, 0.1));
+    palette.addColor(new Color(108, 163, 204, 0.2));
+    palette.addColor(new Color(155, 204, 225, 0.3));
+    palette.addColor(new Color(204, 234, 243, 0.4));
+    palette.addColor(new Color(239, 233, 193, 0.5));
+    palette.addColor(new Color(254, 202, 123, 0.6));
+    palette.addColor(new Color(250, 153, 87, 0.7));
+    palette.addColor(new Color(237, 95, 61, 0.8));
+    palette.addColor(new Color(208, 42, 39, 0.9));
+    palette.addColor(new Color(208, 42, 39, 0.9));
+    palette.addColor(new Color(146, 11, 39, 1));
+    palette.buildLookup();
+
+
+
+    let WINDOW_SIZE = 256;
+
+    let WINDOW_OVERLAP = 0.5;
+    let FREQUENCY_BINS = 128; // max half a window size
+
+    let NR_SAMPLES_PER_SEC = 10;
+
+    document.getElementById("testOverTime").onclick = () => {
+        runOverTime(WINDOW_SIZE, ctxInput, ctxOutput, ctxSpectogram, ctxHistogram, palette);
+    }
+
+    document.getElementById("testSpectogramMultiSample").onclick = () => {
+        const NR_SAMPLES = WINDOW_SIZE * 5;
+        testGenerateSpectogram(NR_SAMPLES, WINDOW_SIZE, NR_SAMPLES_PER_SEC, ctxInput, WINDOW_OVERLAP, FREQUENCY_BINS, ctxSpectogram, ctxHistogram, palette);
+    }
+
+    (<HTMLInputElement>document.getElementById("windowSize")).onchange = function() {
+        WINDOW_SIZE = (<HTMLInputElement>this).valueAsNumber;
+    };
+
+
+    (<HTMLInputElement>document.getElementById("windowOverlap")).onchange = function() {
+        WINDOW_OVERLAP = (<HTMLInputElement>this).valueAsNumber;
+        console.log("Window overlap: " + WINDOW_OVERLAP);
+    };
+
+
+    (<HTMLInputElement>document.getElementById("frequencyBins")).onchange = function() {
+        FREQUENCY_BINS = (<HTMLInputElement>this).valueAsNumber;
+    };
+
+    (<HTMLInputElement>document.getElementById("nrSamplesPerSec")).onchange = function() {
+        NR_SAMPLES_PER_SEC = (<HTMLInputElement>this).valueAsNumber;
+    };
+
+
+    let textToAnalyze = "";
+    document.getElementById("analyzeCSV").onclick = () => {
+
+
+        const loadText = new Promise<string>((then, reject) => {
+            var fileToLoad = (<HTMLInputElement>document.getElementById("file")).files[0];
+            if (typeof fileToLoad === "undefined") {
+                const text = (<HTMLTextAreaElement>document.getElementById("txt")).value;
+                then(text);
+            }
+            else {
+                var fileReader = new FileReader();
+                fileReader.onload = function(fileLoadedEvent) {
+                    const text = (<any>fileLoadedEvent.target).result;
+                    then(text);
+                };
+                fileReader.readAsText(fileToLoad, "UTF-8");
+            }
+        });
+
+        loadText.then(text => {
+            textToAnalyze = text;
+            const lines = textToAnalyze.split("\n");
+            if (lines.length > 0) {
+                const parts = lines[0].split(/[;,\t]/);
+
+                const el = (<HTMLSelectElement>document.getElementById("columnSelect"));
+                for (let i: number = el.childNodes.length - 1; i >= 0; i--) {
+                    el.removeChild(el.childNodes[i]);
+                }
+
+                for (let i: number = 0; i < parts.length; i++) {
+                    const opt = document.createElement("option");
+                    opt.value = i.toString();
+                    opt.textContent = "Column " + i;
+                    el.appendChild(opt);
+                }
+            }
+            try {
+                analyze(textToAnalyze);
+            }
+            catch (err) {
+                alert("Error: " + err.name + " - " + err.message);
+            }
+        }).catch(err => {
+            alert("Error loading text");
+        })
+
+    }
+
+    (<HTMLSelectElement>document.getElementById("columnSelect")).onchange = () => {
+        const el = (<HTMLSelectElement>document.getElementById("columnSelect"));
+        try {
+            analyze(textToAnalyze, el.selectedIndex);
+        }
+        catch (err) {
+            alert("Error: " + err.name + " - " + err.message + " " + err.stack);
+        }
+    }
+
+    function analyze(text: string, columnIdx: number = 0) {
+
+        let arr = text.split("\n").map(l => parseFloat(l.split(/[;,\t]/)[columnIdx].trim())).filter(val => !isNaN(val));
+        let data = new Float32Array(arr);
+
+        if (data.length <= 0) {
+            alert("No data points");
+            return;
+        }
+
+        if (data.length < WINDOW_SIZE) {
+            alert("Window size can't be larger than the amount of data points");
+            return;
+        }
+        if (FREQUENCY_BINS > WINDOW_SIZE) {
+            alert("Frequency bins can't be larger than the window size");
+            return;
+        }
+
+        //draw(ctxInput, data, 0, 1024);
+        generateChart("container", "Input data", data, function() {
+            return `${this.value} (${(this.value / NR_SAMPLES_PER_SEC).toFixed(2)}s)`;
+        });
+
+        cInput.setAttribute("style", "display:none");
+        document.getElementById("fldOutput").setAttribute("style", "display:none");
+
+        analyzeData(WINDOW_SIZE, WINDOW_OVERLAP, NR_SAMPLES_PER_SEC, data, FREQUENCY_BINS, ctxSpectogram, ctxHistogram, palette);
+    }
+
+    //await runOverTime(WINDOW_SIZE, ctxInput, ctxOutput, ctxSpectogram);
+    //return; 
+}
+
+
+function generateChart(containerId: string, title: string, data: Float32Array | Array<Number>, formatter?: Function) {
+    Highcharts.chart(containerId, <any>{
+
+        chart: {
+            zoomType: 'x'
+        },
+
+        title: {
+            text: title
+        },
+        tooltip: {
+            valueDecimals: 2
+        },
+        credits: {
+            enabled: false
+        },
+        xAxis: {
+            labels: {
+                formatter: typeof formatter !== "undefined" ? formatter : function() {
+                    return `${this.value}`;
+                }
+            }
+        },
+
+        series: [{
+            data: data,
+            lineWidth: 0.5,
+            name: 'Data points',
+            showInLegend: false
+        }]
+    });
+}
+
+function testGenerateSpectogram(nrSamples: number, windowSize: number, nrSamplesPerSec: number, ctxInput: CanvasRenderingContext2D, windowOverlap: number, frequencyBins: number, ctxSpectogram: CanvasRenderingContext2D, ctxHistogram: CanvasRenderingContext2D, palette: Palette) {
+    const nrFullWindows = nrSamples / windowSize;
+    let data = new Float32Array(nrSamples);
+    let dataIdx = 0;
+    for (let t: number = 0; t < nrFullWindows; t++) {
+
+        for (let i: number = 0; i < windowSize; i++) {
+            if (i % 10 < 4) {
+                data[dataIdx++] = 10;
+            } else if (i % 10 < 8) {
+                data[dataIdx++] = 5;
+            } else
+                data[dataIdx++] = 0;
+        }
+        /*   let baseFrequency = t;
+           for (let i: number = 0; i < windowSize; i++) {
+               const val = 2.0 * Math.sin((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 40))
+                   + 1 * Math.cos((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 20))
+                   + 0.5 * Math.sin((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 10))
+                   + Math.random() * 0.25 * Math.sin((i + t) / windowSize * (Math.PI * 2 * baseFrequency * 5));
+               data[dataIdx++] = val;
+           }*/
+    }
+
+
+    try {
+        generateChart("container", "Input data", data, function() {
+            return `${this.value} (${(this.value / nrSamplesPerSec).toFixed(2)}s)`;
+        });
+        analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequencyBins, ctxSpectogram, ctxHistogram, palette);
+    }
+    catch (err) {
+        alert("Error: " + err.name + " - " + err.message);
+    }
+
+}
+
+function analyzeData(windowSize: number, windowOverlap: number, nrSamplesPerSec: number, data: Float32Array, frequencyBins: number, ctxSpectogram: CanvasRenderingContext2D, ctxHistogram: CanvasRenderingContext2D, palette: Palette) {
+
+
+    const windowStep = windowSize * (1 - windowOverlap);
+    const hannValues = getHannValues(windowSize);
+    const windowFunction = (i: number) => hannValues[i];
+    let nrWindows = data.length / windowStep;
+
+    let powerSpectralDensities: number[] = [];
+
+    let spectogram: Spectogram = new Spectogram(nrWindows, frequencyBins);
+
+    let globalMax: number = Number.MIN_VALUE;
+    let globalMin: number = Number.MAX_VALUE;
+    for (let i: number = 0; i < data.length; i++) {
+        if (globalMax < data[i]) globalMax = data[i];
+        if (globalMin > data[i]) globalMin = data[i];
+    }
+
+    let histogramOverTime = new HistogramOverTime(nrWindows, frequencyBins);
+
+    const powerDensities: number[] = [];
+
+    const statsArray: Stats[] = [];
+
+    for (let offset: number = 0; offset < data.length - windowSize; offset += windowStep) {
+        let complex: FFT.ComplexArray = { im: new Float32Array(windowSize), re: new Float32Array(windowSize) };
+
+        let max: number = Number.MIN_VALUE;
+        let min: number = Number.MAX_VALUE;
+
+        for (let i: number = 0; i < windowSize; i++) {
+            if (max < data[offset + i]) max = data[offset + i];
+            if (min > data[offset + i]) min = data[offset + i];
+        }
+
+        const alphas: number[] = [];
+        const histogram = new Float32Array(frequencyBins);
+        for (let i: number = 0; i < windowSize; i++) {
+            let val = data[offset + i];
+            let alpha = (globalMin == globalMax) ? 0 : (val - globalMin) / (globalMax - globalMin);
+            //alpha *= windowFunction(i);
+            alphas.push(alpha);
+
+            let idx = Math.floor(alpha * (frequencyBins - 1));
+            histogram[idx]++;
+        }
+        histogramOverTime.add(histogram);
+
+        for (let i: number = 0; i < windowSize; i++)
+            complex.re[i] = windowFunction(i) * data[offset + i];
+
+        const stats = getStatistics(complex.re);
+        statsArray.push(stats);
+
+        FFT.fft(complex, false);
+        const magnitude = new Float32Array(windowSize);
+        for (let i: number = 0; i < complex.re.length; i++) {
+            magnitude[i] = Math.sqrt(complex.re[i] * complex.re[i] + complex.im[i] * complex.im[i]);
+        }
+
+        spectogram.add(magnitude);
+
+        let pi = 0;
+        for (let i: number = 0; i < magnitude.length; i++)
+            pi += magnitude[i] * magnitude[i];
+
+        pi /= windowSize;
+        powerDensities.push(alphas.reduce((sum, val) => sum + val) / windowSize);
+        powerSpectralDensities.push(pi);
+
+    }
+
+    spectogram.draw(ctxSpectogram, palette);
+    histogramOverTime.draw(ctxHistogram, palette);
+
+    const totalPSD = powerSpectralDensities.reduce((sum, val) => sum + val, 0);
+    const probabilitySpectralDensities = powerSpectralDensities.map(psd => psd / totalPSD);
+
+    const PSE = -probabilitySpectralDensities.filter(pi => pi > 0).map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val);
+    console.log("PSE: " + PSE);
+
+    console.log(powerDensities);
+    const totalPD = powerDensities.reduce((sum, val) => sum + val, 0);
+    const probabilityDensities = powerDensities.filter(pi => pi > 0).map(psd => psd / totalPD);
+    const entropy = -probabilityDensities.map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val);
+
+    console.log("Entropy: " + entropy);
+
+    let freqStep = 1 * nrSamplesPerSec / windowSize;
+    let binLength = windowSize / frequencyBins;
+
+
+    const lowerFreq = 0 * nrSamplesPerSec / windowSize;
+    const midFreq = (windowSize / 2) * nrSamplesPerSec / windowSize;
+    const upperFreq = (windowSize - 1) * nrSamplesPerSec / windowSize;
+
+
+    document.getElementById("lowerFreq").textContent = `${lowerFreq.toFixed(2)} - ${(lowerFreq + freqStep * binLength).toFixed(2)} Hz`;
+    document.getElementById("midFreq").textContent = `${midFreq.toFixed(2)} - ${(midFreq + freqStep * binLength).toFixed(2)} Hz`;
+    document.getElementById("upperFreq").textContent = `${upperFreq.toFixed(2)} - ${(upperFreq + freqStep * binLength).toFixed(2)} Hz`;
+
+    document.getElementById("histogramMin").textContent = `${globalMin.toFixed(2)}`;
+    document.getElementById("histogramMax").textContent = `${globalMax.toFixed(2)}`;
+
+    document.getElementById("pse").textContent = PSE + "";
+    document.getElementById("entropy").textContent = entropy + "";
+
+    generateChart("mean", "Mean", statsArray.map(s => s.mean));
+    generateChart("median", "Median", statsArray.map(s => s.median));
+    generateChart("variance", "Variance", statsArray.map(s => s.variance));
+    generateChart("skewness", "Skewness", statsArray.map(s => s.skewness));
+    generateChart("kurtosis", "Kurtosis", statsArray.map(s => s.kurtosis));
+}
+
+
+interface Stats {
+    mean: number;
+    variance: number;
+    stddev: number;
+    median: number;
+    skewness: number;
+    kurtosis: number;
+}
+
+
+function getStatistics(arr: Float32Array): Stats {
+    const sum = arr.reduce((sum, val) => sum + val);
+    const mean = sum / arr.length;
+
+    const stddevsum = arr.reduce((sum, val) => sum + (val - mean) * (val - mean));
+    const variance = stddevsum / (arr.length - 1);
+    const stddev = Math.sqrt(variance);
+
+    const thirdMoment = arr.reduce((sum, val) => sum + (val - mean) * (val - mean) * (val - mean)) / arr.length;
+    const skewness = thirdMoment / (stddev * stddev * stddev);
+
+    const fourthMoment = arr.reduce((sum, val) => sum + (val - mean) * (val - mean) * (val - mean) * (val - mean)) / arr.length;
+    const kurtosis = fourthMoment / (stddev * stddev * stddev * stddev);
+
+    const sortedValues = arr.slice(0).sort((a, b) => a - b);
+    const midpointIdx = Math.floor(arr.length / 2);
+    const median = (arr.length % 2) > 0 ? sortedValues[midpointIdx] : ((sortedValues[midpointIdx - 1] + sortedValues[midpointIdx]) / 2.0);
+
+
+    return {
+        mean: mean,
+        variance: variance,
+        stddev: stddev,
+        median: median,
+        skewness: skewness,
+        kurtosis: kurtosis
+    };
+}
+
+
+class Palette {
+
+    private colors: Color[] = [];
+    private lookup: Color[] = [];
+
+    buildLookup() {
+        this.lookup = [];
+        for (var i = 0; i < 1000; i++)
+            this.lookup.push(this.getColorAt(i / 1000));
+    };
+
+    getColorFromLookupAt(position: number) {
+        let idx;
+        if (isNaN(position))
+            idx = 0;
+        else
+            idx = Math.floor(position * this.lookup.length);
+
+        if (idx < 0) idx = 0;
+        if (idx >= this.lookup.length) idx = this.lookup.length - 1;
+        return this.lookup[idx];
+    };
+
+
+    getColorAt(position: number): Color {
+
+        if (position < this.colors[0].position)
+            return this.colors[0];
+
+        if (position >= this.colors[this.colors.length - 1].position)
+            return this.colors[this.colors.length - 1];
+
+        for (let i = 0; i < this.colors.length; i++) {
+
+            if (position >= this.colors[i].position && position < this.colors[i + 1].position) {
+                var relColorAlpha = (position - this.colors[i].position) / (this.colors[i + 1].position - this.colors[i].position);
+                var red = this.colors[i].red * (1 - relColorAlpha) + this.colors[i + 1].red * (relColorAlpha);
+                var green = this.colors[i].green * (1 - relColorAlpha) + this.colors[i + 1].green * (relColorAlpha);
+                var blue = this.colors[i].blue * (1 - relColorAlpha) + this.colors[i + 1].blue * (relColorAlpha);
+
+                return new Color(red, green, blue, position);
+            }
+        }
+        return this.colors[0];
+    }
+
+    addColor(c: Color) {
+        this.colors.push(c);
+    }
+
+    drawTo(ctx: CanvasRenderingContext2D) {
+        for (let i: number = 0; i < ctx.canvas.width; i++) {
+            let pos = i / ctx.canvas.width;
+
+            let c = this.getColorFromLookupAt(pos);
+            ctx.fillStyle = `rgb(${c.red},${c.green},${c.blue})`;
+            ctx.fillRect(i, 0, 1, ctx.canvas.height);
+        }
+    }
+}
+
+class Color {
+
+    red: number;
+    green: number;
+    blue: number;
+    position: number;
+
+    constructor(red: number, green: number, blue: number, position: number) {
+
+        this.red = Math.floor(red);
+        this.green = Math.floor(green);
+        this.blue = Math.floor(blue);
+        this.position = Math.round(position * 100) / 100;
+    }
+}
+
+main().then(() => {
+
+}).catch((err) => {
+    console.error(err.name + " " + err.message);
+});
+
+</script>
+</body>
+
+</html>
