@@ -1,4 +1,4 @@
-﻿<html>
+<html>
 
 <head>
     <title>Untitled Typescript Snippet</title>
@@ -42,14 +42,15 @@ fieldset {
     <fieldset>
         <span>Select a csv file:</span>
         <input type="file" id="file">
-        <br/>
-        or put values in this textbox:
+        <br/> or put values in this textbox:
         <textarea id="txt"></textarea>
         <br/>
-        <label><input id="filterOutliers" type="checkbox"></input>Filter out outliers (< q5, > q95)</label>
-        
+        <label>
+            <input id="filterOutliers" type="checkbox"></input>Filter out outliers (
+            < q5,> q95)</label>
+
         <button id="analyzeCSV">Analyze value columns</button>
-        
+
         <br/>
         <br/>
         <label>FFT window size
@@ -57,7 +58,7 @@ fieldset {
         </label>
         <br/>
         <label>FFT window overlap
-            <input id="windowOverlap" type="number" value="0.5" step="0.1" min="0" max="0.9" />
+            <input id="windowOverlap" type="number" value="0.5" step="0.01" min="0" max="0.9" />
         </label>
         <br/>
         <label>Spectogram frequency bins
@@ -111,7 +112,11 @@ fieldset {
 
         <div>Entropy: <span class="" id="entropy"></span></div>
     </fieldset>
-
+    <fieldset>
+        Distances to determine segmentation points
+        <br/>
+        <div id="distances"></div>
+    </fieldset>
     <fieldset>
         Mean
         <br/>
@@ -328,6 +333,9 @@ var Spectogram = /** @class */ (function () {
         this.bufferCanvas.width = maxHistory;
         this.bufferCanvas.height = freqBins;
     }
+    Spectogram.prototype.getValues = function () {
+        return this.allValues;
+    };
     Spectogram.prototype.add = function (values) {
         var hist = bucketize(values, this.freqBins);
         for (var i = 0; i < hist.length; i++) {
@@ -466,9 +474,16 @@ function getHannValues(size) {
 }
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        function analyze(text, columnIdx) {
+        function analyze(lines, columnIdx) {
             if (columnIdx === void 0) { columnIdx = 0; }
-            var arr = text.split("\n").map(function (l) { return parseFloat(l.split(/[;,\t]/)[columnIdx].trim()); }).filter(function (val) { return !isNaN(val); });
+            var arr = lines.map(function (l) {
+                var parts = l.split(/[;,\t]/);
+                if (columnIdx < parts.length)
+                    return parseFloat(parts[columnIdx].trim().replace(/\"/g, ""));
+                else {
+                    return Number.NaN;
+                }
+            }).filter(function (val) { return !isNaN(val); });
             var data = new Float32Array(arr);
             if (document.getElementById("filterOutliers").checked) {
                 var stats_1 = getStatistics(data);
@@ -494,7 +509,7 @@ function main() {
             document.getElementById("fldOutput").setAttribute("style", "display:none");
             analyzeData(WINDOW_SIZE, WINDOW_OVERLAP, NR_SAMPLES_PER_SEC, data, FREQUENCY_BINS, ctxSpectogram, ctxHistogram, palette);
         }
-        var cInput, ctxInput, cOutput, ctxOutput, cSpectogram, ctxSpectogram, cHistogram, ctxHistogram, palette, WINDOW_SIZE, WINDOW_OVERLAP, FREQUENCY_BINS, NR_SAMPLES_PER_SEC, textToAnalyze;
+        var cInput, ctxInput, cOutput, ctxOutput, cSpectogram, ctxSpectogram, cHistogram, ctxHistogram, palette, WINDOW_SIZE, WINDOW_OVERLAP, FREQUENCY_BINS, NR_SAMPLES_PER_SEC, lines;
         return __generator(this, function (_a) {
             cInput = document.getElementById("input");
             ctxInput = cInput.getContext("2d");
@@ -542,7 +557,7 @@ function main() {
             document.getElementById("nrSamplesPerSec").onchange = function () {
                 NR_SAMPLES_PER_SEC = this.valueAsNumber;
             };
-            textToAnalyze = "";
+            lines = [];
             document.getElementById("analyzeCSV").onclick = function () {
                 var loadText = new Promise(function (then, reject) {
                     var fileToLoad = document.getElementById("file").files[0];
@@ -560,8 +575,8 @@ function main() {
                     }
                 });
                 loadText.then(function (text) {
-                    textToAnalyze = text;
-                    var lines = textToAnalyze.split("\n");
+                    var textToAnalyze = text;
+                    lines = textToAnalyze.split("\n");
                     if (lines.length > 0) {
                         var parts = lines[0].split(/[;,\t]/);
                         var el = document.getElementById("columnSelect");
@@ -576,7 +591,7 @@ function main() {
                         }
                     }
                     try {
-                        analyze(textToAnalyze);
+                        analyze(lines);
                     }
                     catch (err) {
                         alert("Error: " + err.name + " - " + err.message);
@@ -588,7 +603,7 @@ function main() {
             document.getElementById("columnSelect").onchange = function () {
                 var el = document.getElementById("columnSelect");
                 try {
-                    analyze(textToAnalyze, el.selectedIndex);
+                    analyze(lines, el.selectedIndex);
                 }
                 catch (err) {
                     alert("Error: " + err.name + " - " + err.message + " " + err.stack);
@@ -625,6 +640,37 @@ function generateChart(containerId, title, data, formatter) {
                 name: 'Data points',
                 showInLegend: false
             }]
+    });
+}
+function generateChartWithSeries(containerId, title, series, formatter) {
+    Highcharts.chart(containerId, {
+        chart: {
+            zoomType: 'x'
+        },
+        title: {
+            text: title
+        },
+        tooltip: {
+            valueDecimals: 2
+        },
+        credits: {
+            enabled: false
+        },
+        xAxis: {
+            labels: {
+                formatter: typeof formatter !== "undefined" ? formatter : function () {
+                    return "" + this.value;
+                }
+            }
+        },
+        series: series.map(function (s) {
+            return {
+                data: s.data,
+                lineWidth: 0.5,
+                name: s.name,
+                showInLegend: false
+            };
+        })
     });
 }
 function testGenerateSpectogram(nrSamples, windowSize, nrSamplesPerSec, ctxInput, windowOverlap, frequencyBins, ctxSpectogram, ctxHistogram, palette) {
@@ -700,9 +746,12 @@ function analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequency
             histogram[idx]++;
         }
         histogramOverTime.add(histogram);
-        for (var i = 0; i < windowSize; i++)
+        var windowData = new Float32Array(windowSize);
+        for (var i = 0; i < windowSize; i++) {
             complex.re[i] = windowFunction(i) * data[offset + i];
-        var stats = getStatistics(complex.re);
+            windowData[i] = data[offset + i];
+        }
+        var stats = getStatistics(windowData);
         statsArray.push(stats);
         FFT.fft(complex, false);
         var magnitude = new Float32Array(windowSize);
@@ -723,7 +772,6 @@ function analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequency
     var probabilitySpectralDensities = powerSpectralDensities.map(function (psd) { return psd / totalPSD; });
     var PSE = -probabilitySpectralDensities.filter(function (pi) { return pi > 0; }).map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; }, 0);
     console.log("PSE: " + PSE);
-    console.log(powerDensities);
     var totalPD = powerDensities.reduce(function (sum, val) { return sum + val; }, 0);
     var probabilityDensities = powerDensities.filter(function (pi) { return pi > 0; }).map(function (psd) { return psd / totalPD; });
     var entropy = -probabilityDensities.map(function (pi) { return pi * Math.log(pi); }).reduce(function (sum, val) { return sum + val; }, 0);
@@ -745,16 +793,55 @@ function analyzeData(windowSize, windowOverlap, nrSamplesPerSec, data, frequency
     generateChart("variance", "Variance", statsArray.map(function (s) { return s.variance; }));
     generateChart("skewness", "Skewness", statsArray.map(function (s) { return s.skewness; }));
     generateChart("kurtosis", "Kurtosis", statsArray.map(function (s) { return s.kurtosis; }));
+    var spectogramDistances = getDistanceSeries(spectogram);
+    var histogramOverTimeDistances = getDistanceSeries(histogramOverTime);
+    console.log(histogramOverTimeDistances);
+    generateChartWithSeries("distances", "Distances", [
+        { data: spectogramDistances, name: "Spectogram" },
+        { data: histogramOverTimeDistances, name: "Histogram" },
+    ]);
+}
+function getDistanceSeries(spectogram) {
+    var values = spectogram.getValues();
+    var distances = new Float32Array(values.length - 1);
+    for (var i = 1; i < values.length; i++) {
+        var distance = calculateDistance(values[i - 1], values[i]);
+        distances[i - 1] = distance;
+    }
+    return distances;
+}
+function calculateDistance(values1, values2) {
+    var sum1 = values1.reduce(function (sum, val) { return sum + val; }, 0);
+    var Px = values1.map(function (v) { return v / sum1; });
+    var sum2 = values2.reduce(function (sum, val) { return sum + val; }, 0);
+    var Qx = values2.map(function (v) { return v / sum2; });
+    var total = 0;
+    for (var i = 0; i < values1.length; i++) {
+        total += Math.abs(Px[i] - Qx[i]);
+    }
+    return total;
+}
+function calculateKullbeckLeibler(values1, values2) {
+    var sum1 = values1.reduce(function (sum, val) { return sum + val; }, 0);
+    var Px = values1.map(function (v) { return v / sum1; });
+    var sum2 = values2.reduce(function (sum, val) { return sum + val; }, 0);
+    var Qx = values2.map(function (v) { return v / sum2; });
+    var total = 0;
+    for (var i = 0; i < values1.length; i++) {
+        if (Qx[i] !== 0 && Px[i] !== 0)
+            total += Px[i] * Math.log(Px[i] / Qx[i]);
+    }
+    return total;
 }
 function getStatistics(arr) {
-    var sum = arr.reduce(function (sum, val) { return sum + val; });
+    var sum = arr.reduce(function (s, val) { return s + val; }, 0);
     var mean = sum / arr.length;
-    var stddevsum = arr.reduce(function (sum, val) { return sum + (val - mean) * (val - mean); });
+    var stddevsum = arr.reduce(function (s, val) { return s + (val - mean) * (val - mean); }, 0);
     var variance = stddevsum / (arr.length - 1);
     var stddev = Math.sqrt(variance);
-    var thirdMoment = arr.reduce(function (sum, val) { return sum + (val - mean) * (val - mean) * (val - mean); }) / arr.length;
+    var thirdMoment = arr.reduce(function (s, val) { return s + (val - mean) * (val - mean) * (val - mean); }, 0) / arr.length;
     var skewness = thirdMoment / (stddev * stddev * stddev);
-    var fourthMoment = arr.reduce(function (sum, val) { return sum + (val - mean) * (val - mean) * (val - mean) * (val - mean); }) / arr.length;
+    var fourthMoment = arr.reduce(function (s, val) { return s + (val - mean) * (val - mean) * (val - mean) * (val - mean); }, 0) / arr.length;
     var kurtosis = fourthMoment / (stddev * stddev * stddev * stddev);
     var sortedValues = arr.slice(0).sort(function (a, b) { return a - b; });
     var midpointIdx = Math.floor(arr.length / 2);
@@ -1021,6 +1108,9 @@ class Spectogram {
         this.bufferCanvas.height = freqBins;
     }
 
+    getValues() {
+        return this.allValues;
+    }
     add(values: Float32Array) {
         const hist = bucketize(values, this.freqBins);
         for (let i: number = 0; i < hist.length; i++) {
@@ -1227,7 +1317,8 @@ async function main() {
     };
 
 
-    let textToAnalyze = "";
+    let lines: string[] = [];
+
     document.getElementById("analyzeCSV").onclick = () => {
 
 
@@ -1248,8 +1339,8 @@ async function main() {
         });
 
         loadText.then(text => {
-            textToAnalyze = text;
-            const lines = textToAnalyze.split("\n");
+            const textToAnalyze = text;
+            lines = textToAnalyze.split("\n");
             if (lines.length > 0) {
                 const parts = lines[0].split(/[;,\t]/);
 
@@ -1266,7 +1357,7 @@ async function main() {
                 }
             }
             try {
-                analyze(textToAnalyze);
+                analyze(lines);
             }
             catch (err) {
                 alert("Error: " + err.name + " - " + err.message);
@@ -1280,16 +1371,23 @@ async function main() {
     (<HTMLSelectElement>document.getElementById("columnSelect")).onchange = () => {
         const el = (<HTMLSelectElement>document.getElementById("columnSelect"));
         try {
-            analyze(textToAnalyze, el.selectedIndex);
+
+            analyze(lines, el.selectedIndex);
         }
         catch (err) {
             alert("Error: " + err.name + " - " + err.message + " " + err.stack);
         }
     }
 
-    function analyze(text: string, columnIdx: number = 0) {
-
-        let arr = text.split("\n").map(l => parseFloat(l.split(/[;,\t]/)[columnIdx].trim())).filter(val => !isNaN(val));
+    function analyze(lines: string[], columnIdx: number = 0) {
+        let arr = lines.map(l => {
+            const parts = l.split(/[;,\t]/);
+            if (columnIdx < parts.length)
+                return parseFloat(parts[columnIdx].trim().replace(/\"/g, ""));
+            else {
+                return Number.NaN;
+            }
+        }).filter(val => !isNaN(val));
         let data = new Float32Array(arr);
 
         if ((<HTMLInputElement>document.getElementById("filterOutliers")).checked) {
@@ -1357,6 +1455,42 @@ function generateChart(containerId: string, title: string, data: Float32Array | 
             name: 'Data points',
             showInLegend: false
         }]
+    });
+}
+
+
+function generateChartWithSeries(containerId: string, title: string, series: { data: Float32Array | Array<Number>, name: string }[], formatter?: Function) {
+    Highcharts.chart(containerId, <any>{
+
+        chart: {
+            zoomType: 'x'
+        },
+
+        title: {
+            text: title
+        },
+        tooltip: {
+            valueDecimals: 2
+        },
+        credits: {
+            enabled: false
+        },
+        xAxis: {
+            labels: {
+                formatter: typeof formatter !== "undefined" ? formatter : function() {
+                    return `${this.value}`;
+                }
+            }
+        },
+
+        series: series.map(s => {
+            return {
+                data: s.data,
+                lineWidth: 0.5,
+                name: s.name,
+                showInLegend: false
+            };
+        })
     });
 }
 
@@ -1446,10 +1580,13 @@ function analyzeData(windowSize: number, windowOverlap: number, nrSamplesPerSec:
         }
         histogramOverTime.add(histogram);
 
-        for (let i: number = 0; i < windowSize; i++)
+        const windowData = new Float32Array(windowSize);
+        for (let i: number = 0; i < windowSize; i++) {
             complex.re[i] = windowFunction(i) * data[offset + i];
+            windowData[i] = data[offset + i];
+        }
 
-        const stats = getStatistics(complex.re);
+        const stats = getStatistics(windowData);
         statsArray.push(stats);
 
         FFT.fft(complex, false);
@@ -1478,13 +1615,12 @@ function analyzeData(windowSize: number, windowOverlap: number, nrSamplesPerSec:
     const totalPSD = powerSpectralDensities.reduce((sum, val) => sum + val, 0);
     const probabilitySpectralDensities = powerSpectralDensities.map(psd => psd / totalPSD);
 
-    const PSE = -probabilitySpectralDensities.filter(pi => pi > 0).map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val,0);
+    const PSE = -probabilitySpectralDensities.filter(pi => pi > 0).map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val, 0);
     console.log("PSE: " + PSE);
 
-    console.log(powerDensities);
     const totalPD = powerDensities.reduce((sum, val) => sum + val, 0);
     const probabilityDensities = powerDensities.filter(pi => pi > 0).map(psd => psd / totalPD);
-    const entropy = -probabilityDensities.map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val,0);
+    const entropy = -probabilityDensities.map(pi => pi * Math.log(pi)).reduce((sum, val) => sum + val, 0);
 
     console.log("Entropy: " + entropy);
 
@@ -1512,6 +1648,15 @@ function analyzeData(windowSize: number, windowOverlap: number, nrSamplesPerSec:
     generateChart("variance", "Variance", statsArray.map(s => s.variance));
     generateChart("skewness", "Skewness", statsArray.map(s => s.skewness));
     generateChart("kurtosis", "Kurtosis", statsArray.map(s => s.kurtosis));
+
+
+    const spectogramDistances = getDistanceSeries(spectogram);
+    const histogramOverTimeDistances = getDistanceSeries(histogramOverTime);
+    console.log(histogramOverTimeDistances);
+    generateChartWithSeries("distances", "Distances", [
+        { data: spectogramDistances, name: "Spectogram" },
+        { data: histogramOverTimeDistances, name: "Histogram" },
+    ]);
 }
 
 
@@ -1528,19 +1673,59 @@ interface Stats {
     q75: number;
 }
 
+function getDistanceSeries(spectogram: Spectogram) {
+    const values = spectogram.getValues();
+    const distances = new Float32Array(values.length - 1);
+    for (let i: number = 1; i < values.length; i++) {
+        const distance = calculateDistance(values[i - 1], values[i]);
+
+        distances[i - 1] = distance;
+    }
+    return distances;
+}
+
+function calculateDistance(values1: Float32Array, values2: Float32Array) {
+    const sum1 = values1.reduce((sum, val) => sum + val, 0);
+    const Px = values1.map(v => v / sum1);
+
+    const sum2 = values2.reduce((sum, val) => sum + val, 0);
+    const Qx = values2.map(v => v / sum2)
+
+    let total = 0;
+    for (let i: number = 0; i < values1.length; i++) {
+        total += Math.abs(Px[i] - Qx[i]);
+    }
+    return total;
+}
+
+function calculateKullbeckLeibler(values1: Float32Array, values2: Float32Array) {
+    const sum1 = values1.reduce((sum, val) => sum + val, 0);
+    const Px = values1.map(v => v / sum1);
+
+    const sum2 = values2.reduce((sum, val) => sum + val, 0);
+    const Qx = values2.map(v => v / sum2)
+
+    let total = 0;
+    for (let i: number = 0; i < values1.length; i++) {
+        if (Qx[i] !== 0 && Px[i] !== 0)
+            total += Px[i] * Math.log(Px[i] / Qx[i]);
+    }
+    return total;
+}
 
 function getStatistics(arr: Float32Array): Stats {
-    const sum = arr.reduce((sum, val) => sum + val);
+
+    const sum = arr.reduce((s, val) => s + val, 0);
     const mean = sum / arr.length;
 
-    const stddevsum = arr.reduce((sum, val) => sum + (val - mean) * (val - mean));
+    const stddevsum = arr.reduce((s, val) => s + (val - mean) * (val - mean), 0);
     const variance = stddevsum / (arr.length - 1);
     const stddev = Math.sqrt(variance);
 
-    const thirdMoment = arr.reduce((sum, val) => sum + (val - mean) * (val - mean) * (val - mean)) / arr.length;
+    const thirdMoment = arr.reduce((s, val) => s + (val - mean) * (val - mean) * (val - mean), 0) / arr.length;
     const skewness = thirdMoment / (stddev * stddev * stddev);
 
-    const fourthMoment = arr.reduce((sum, val) => sum + (val - mean) * (val - mean) * (val - mean) * (val - mean)) / arr.length;
+    const fourthMoment = arr.reduce((s, val) => s + (val - mean) * (val - mean) * (val - mean) * (val - mean), 0) / arr.length;
     const kurtosis = fourthMoment / (stddev * stddev * stddev * stddev);
 
     const sortedValues = arr.slice(0).sort((a, b) => a - b);
