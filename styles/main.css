@@ -1,0 +1,26 @@
+.spectogram-container {
+    position: relative;
+    padding:5px;
+    background-color:#CCC;
+}
+
+.frequency.label {
+    position: absolute;
+}
+
+.frequency.label.lower {
+    top: 0%;
+}
+
+.frequency.label.mid {
+    top:50%;
+}
+.frequency.label.upper {
+    bottom:0%;
+}
+
+fieldset {
+    width:calc(50% - 32px);
+    float:left;
+    height:450px;
+}
